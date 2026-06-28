@@ -1,49 +1,124 @@
 # MedHEval-Tree-V
 
-Reliability-calibrated evidence-tree routing for medical visual question answering.
+<p align="center">
+  <strong>Reliability-Calibrated Evidence-Tree Routing for Medical Visual Question Answering</strong>
+</p>
 
-This repository contains the experiment code and aggregate results for **MedHEval-Tree-V**, a no-neural-fine-tuning framework for endoscopic medical VQA. The central idea is simple: structured visual evidence should not be blindly injected into every question. Instead, the system extracts a direct answer and a structured evidence tree from an MLLM, retrieves class-aware answer templates, scores evidence-template compatibility, and routes each sample through a calibrated direct or evidence-aware answer path.
+<p align="center">
+  中文名：MedHEval-Tree-V，面向医学视觉问答的可靠性校准证据树路由框架
+</p>
+
+<p align="center">
+  <a href="#quick-start">Quick Start</a> ·
+  <a href="#method-overview">Method Overview</a> ·
+  <a href="#experiments">Experiments</a> ·
+  <a href="#data-and-labels">Data and Labels</a> ·
+  <a href="#reproduction">Reproduction</a>
+</p>
+
+<p align="center">
+  <img alt="Python" src="https://img.shields.io/badge/python-3.10%2B-3776AB">
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-2A9D8F">
+  <img alt="Task" src="https://img.shields.io/badge/task-medical%20VQA-15324A">
+  <img alt="Model" src="https://img.shields.io/badge/MLLM-Qwen--style-8E7CC3">
+  <img alt="Training" src="https://img.shields.io/badge/neural%20fine--tuning-none-E9C46A">
+</p>
+
+MedHEval-Tree-V is a research codebase for studying a practical failure mode in medical visual question answering: **structured evidence is not always beneficial**. A frozen multimodal LLM can produce useful visual evidence, but injecting that evidence into every question may degrade simple recognition cases. This repository implements a reliability-calibrated routing framework that decides when evidence should be trusted and when direct answer normalization is safer.
 
 ![Main idea](paper_figures/Figure1.png)
 
-## Project Summary
+## Core Idea
 
-Medical VQA models often produce visually plausible but verbose free-form answers. Template normalization can improve benchmark-style answer matching, but uniform evidence fusion can hurt simple recognition questions. MedHEval-Tree-V studies this failure mode on Kvasir-VQA-x1 and implements a reliability-calibrated routing pipeline:
+Medical VQA systems often entangle two different problems:
 
-1. **Direct answer branch**: a frozen MLLM generates a concise direct answer.
-2. **Structured evidence branch**: the same MLLM returns parseable evidence fields such as lesion presence, type, count, location, instrument visibility, abnormality, and uncertainty.
-3. **Class-aware template retrieval**: training answers are grouped by question class; TF-IDF retrieves top-K candidate answer templates.
-4. **Evidence-tree compatibility**: candidate answers are scored against field-level evidence compatibility.
-5. **Reliability-calibrated routing**: a lightweight route estimator chooses direct-template retrieval or evidence-aware reranking per sample.
+- visual grounding: identifying what is visible in the medical image;
+- answer normalization: matching the concise answer style expected by the benchmark.
 
-The code is organized around the real experiment trajectory used in the paper: lightweight baselines, full Qwen inference, TF-IDF answer retrieval, cache-only robustness studies, RC-ETR routing, strong prompt baselines, and an external SLAKE stress test.
+Free-form MLLM answers may be visually plausible but verbose or poorly normalized. Structured evidence can help complex reasoning questions, but uniform evidence fusion can add noise to simple questions. MedHEval-Tree-V separates these concerns:
 
-## What Is Included
+> Use the MLLM to produce direct answers and structured evidence, use class-aware retrieval to normalize candidate answers, and use a calibrated evidence-tree router to select the reliable route per sample.
 
-This repository includes:
+## Highlights
 
-- Experiment scripts for Kvasir-VQA-x1 and SLAKE.
-- Server-side Qwen inference scripts for direct answer and structured evidence extraction.
-- Cache-only analysis scripts for random splits, bootstrap significance, metadata ablation, shuffle controls, sensitivity tests, calibrated routing, and RC-ETR.
-- Aggregate CSV result tables from the real experiment runs.
-- Paper figures used to explain the method and summarize results.
-- Documentation for expected data layout, label usage, and reproduction commands.
+- **No neural fine-tuning**: the visual-language model is frozen; all routing is performed over cached outputs.
+- **Structured evidence cache**: direct answers and JSON-like evidence records are generated once and reused.
+- **Class-aware answer normalization**: training answers are grouped by question class and retrieved with TF-IDF.
+- **Evidence-tree compatibility**: candidate answers are checked against field-level evidence signals.
+- **Reliability-calibrated routing**: a lightweight route estimator selects direct or evidence-aware answers per sample.
+- **Robustness analyses**: random development splits, bootstrap significance, metadata ablation, shuffle controls, strong Qwen prompt baselines, and SLAKE stress testing are included.
 
-This repository intentionally does **not** include:
+## Method Overview
 
-- Raw medical images or dataset parquet files.
-- Model weights.
-- SSH keys, passwords, machine-specific paths, or server credentials.
-- Full per-sample prediction dumps or Qwen JSONL outputs, because they can contain benchmark question text, gold answers, image identifiers, and model outputs.
-- Synthetic what-if manuscript variants or synthetic result tables.
+The pipeline has four stages:
 
-## Repository Layout
+1. **Input**: an endoscopic image, a question, a complexity label, and one or more question classes.
+2. **Frozen MLLM Evidence Cache**: the MLLM generates a direct answer `a_d` and a structured evidence tree `e`.
+3. **Class-Aware Template Retrieval**: a class filter restricts the answer bank, and TF-IDF retrieves top-K templates for both direct and evidence-conditioned queries.
+4. **RC-ETR Selection**: direct-template and evidence-reranked candidates are routed through a reliability-calibrated evidence-tree router.
+
+![Pipeline](paper_figures/Figure2.png)
+
+The routing mechanism is deliberately lightweight. It compares route reliability patterns from development data, evidence-tree compatibility, and sample-level route features, then sends only the selected route to the final answer.
+
+![Routing mechanism](paper_figures/Figure3.png)
+
+## Experiments
+
+The released code follows the real experiment sequence used in the paper:
+
+| Stage | Purpose | Main scripts |
+|---|---|---|
+| Lightweight baselines | Majority, template, lexical retrieval sanity checks | `run_kvasir_vqa_lite_experiments.py` |
+| MLLM cache | Qwen direct answer and structured evidence extraction | `run_qwen_sanity.py` |
+| Template retrieval | Direct-template and evidence-aware reranking | `evaluate_full_tfidf_fast.py` |
+| Bucket routing | Development-prefix reliability gate | `analyze_reliability_gates.py` |
+| Robustness | Random splits, bootstrap, metadata ablation, shuffle controls | `cache_only_strengthening.py` |
+| RC-ETR | Evidence-tree compatibility and calibrated sample-level routing | `reliability_calibrated_tree_v2.py` |
+| Prompt baselines | Constrained, metadata-aware, and evidence-first Qwen prompts | `run_qwen_strong_baselines.py` |
+| External stress test | SLAKE routing-principle validation | `slake_external_validation.py` |
+
+### Released Aggregate Results
+
+Only aggregate CSVs are included. Full per-sample prediction dumps are intentionally excluded because they may contain benchmark text, gold answers, image identifiers, and model outputs.
+
+Key real-result files:
+
+| File | Description |
+|---|---|
+| `qwen_full_tfidf_fast_metrics.csv` | Full-split diagnostic metrics for direct template and evidence reranking |
+| `reliability_gate_metrics.csv` | Development-prefix bucket-gate evaluation |
+| `rcetr_v2_main.csv` | Held-out RC-ETR main results and ablations |
+| `rcetr_v2_random_summary.csv` | RC-ETR random development split summary |
+| `cache_only_bootstrap.csv` | Paired bootstrap confidence interval |
+| `cache_only_metadata_ablation.csv` | Metadata ablation for route policies |
+| `cache_only_shuffle_summary.csv` | Evidence shuffle and control results |
+| `cache_only_calibrated_gate_summary.csv` | Calibrated gate summary |
+| `qwen_strong_baseline_metrics.csv` | Strong Qwen prompt baselines |
+| `slake_external_summary_en.csv` | SLAKE English stress-test summary |
+
+Representative held-out Kvasir-VQA-x1 results from `rcetr_v2_main.csv`:
+
+| Method | Eval N | Token F1 | Lexical Drift | Evidence Route Rate |
+|---|---:|---:|---:|---:|
+| Direct template | 15,426 | 0.4160 | 0.4231 | 0.0% |
+| Uniform evidence rerank | 15,426 | 0.4127 | 0.4809 | 100.0% |
+| Bucket gate | 15,426 | 0.4268 | 0.4336 | 44.2% |
+| RC-ETR without tree | 15,426 | 0.4296 | 0.4378 | 34.3% |
+| RC-ETR | 15,426 | 0.4293 | 0.4327 | 23.4% |
+
+The important observation is not simply that evidence can improve performance. The negative control is equally important: **uniform evidence reranking is worse than direct template retrieval**, which motivates selective routing.
+
+![Main results](paper_figures/main_results.png)
+
+## Repository Structure
 
 ```text
 .
 ├── README.md
 ├── LICENSE
 ├── requirements.txt
+├── CITATION.cff
 ├── docs/
 │   ├── data_schema.md
 │   ├── open_source_scope.md
@@ -57,22 +132,22 @@ This repository intentionally does **not** include:
 │   ├── tradeoff_scatter.png
 │   ├── complexity_effect.png
 │   └── complexity_routing_lines.png
+├── examples/
+│   ├── sample_qwen_cache.jsonl
+│   └── sample_template_predictions.csv
 ├── step3_dataset_migration/raw/kvasir_vqa_x1/
 │   └── README.md
 ├── data/slake/
 │   └── README.md
-├── examples/
-│   ├── sample_qwen_cache.jsonl
-│   └── sample_template_predictions.csv
 └── step5_experiments/
     ├── scripts/
     ├── server_scripts/
     └── results/
 ```
 
-## Installation
+## Quick Start
 
-Create a Python environment and install the dependencies:
+Create a Python environment:
 
 ```bash
 python -m venv .venv
@@ -80,20 +155,20 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-For Qwen/MLLM inference, install a PyTorch build compatible with your CUDA runtime and set the model path:
+For Qwen/MLLM inference, install a CUDA-compatible PyTorch build and set the model path:
 
 ```bash
 export QWEN_MODEL_PATH=/path/to/Qwen3.5-9B
 export CUDA_VISIBLE_DEVICES=0,1
 ```
 
-The cache-only experiments do not require GPU inference once `qwen_full_test_outputs.jsonl` and `qwen_full_tfidf_fast_predictions.csv` have been generated.
+Cache-only experiments can run on CPU once the Qwen output cache and template prediction CSV have been generated.
 
-## Data Preparation
+## Data and Labels
 
 ### Kvasir-VQA-x1
 
-Place the Kvasir-VQA-x1 parquet files in:
+Place dataset parquet files here:
 
 ```text
 step3_dataset_migration/raw/kvasir_vqa_x1/
@@ -101,61 +176,76 @@ step3_dataset_migration/raw/kvasir_vqa_x1/
 └── test.parquet
 ```
 
-The scripts expect at least these columns:
+Expected columns:
 
-- `img_id`
-- `question`
-- `answer`
-- `complexity`
-- `question_class`
-- an image URL or image path column, depending on the downloader/bundle script
+| Column | Meaning |
+|---|---|
+| `img_id` | Image identifier |
+| `question` | Natural-language VQA question |
+| `answer` | Ground-truth benchmark answer |
+| `complexity` | Dataset-provided complexity label |
+| `question_class` | One or more semantic question classes |
 
-See `docs/data_schema.md` for details.
+### Label Usage
 
-### SLAKE
+`complexity` is used for development buckets, complexity-level analysis, and route features.
 
-Place SLAKE files under:
+`question_class` is used in two places:
+
+- the first class is treated as the primary class for bucket policies;
+- all classes can activate class-specific answer-template banks.
+
+The class-restricted candidate set is denoted conceptually as:
 
 ```text
-data/slake/
+A(C): answer templates whose training question class matches C
 ```
 
-The SLAKE script supports `inspect`, `qwen`, and `eval` subcommands and can be adapted to local SLAKE file naming if needed.
+If no class-specific templates are available, the retrieval module falls back to a global high-frequency answer list.
 
-## Main Components
+### Structured Evidence Fields
+
+The evidence branch expects a compact JSON-like record:
+
+```json
+{
+  "lesion_presence": "yes",
+  "lesion_type": "polyp",
+  "lesion_count": "1",
+  "location": "sigmoid colon",
+  "instrument_presence": "no",
+  "text_overlay_presence": "no",
+  "abnormality_presence": "yes",
+  "uncertainty": "low",
+  "evidence_sentence": "A polyp-like lesion is visible."
+}
+```
+
+The evidence-tree compatibility module maps these fields into interpretable compatibility signals between each candidate answer and the evidence record.
+
+## Reproduction
 
 ### 1. Lightweight Kvasir Baselines
-
-Runs non-MLLM baselines and early template experiments:
 
 ```bash
 python step5_experiments/scripts/run_kvasir_vqa_lite_experiments.py
 ```
 
-This produces template/majority baselines and helps verify that the Kvasir parquet files are readable.
-
 ### 2. Build a Qwen Server Bundle
-
-Build a small sanity bundle:
 
 ```bash
 python step5_experiments/scripts/build_server_sanity_bundle.py
-```
-
-Build the full test bundle:
-
-```bash
 python step5_experiments/scripts/build_full_server_bundle.py
 ```
 
-If the bundle uses image URLs, download images on the GPU server:
+If the bundle uses image URLs:
 
 ```bash
 python step5_experiments/server_scripts/download_kvasir_images.py \
   --bundle step5_experiments/server_bundle_full
 ```
 
-### 3. Qwen Direct Answer and Structured Evidence Cache
+### 3. Generate the Qwen Evidence Cache
 
 Sanity run:
 
@@ -177,11 +267,7 @@ python step5_experiments/server_scripts/run_qwen_sanity.py \
   --resume
 ```
 
-Each JSONL row contains the benchmark metadata, a direct answer, a structured evidence object, parse status, and runtime metadata.
-
-### 4. TF-IDF Template Retrieval
-
-Evaluate class-aware direct retrieval and evidence-aware reranking:
+### 4. Evaluate TF-IDF Template Retrieval
 
 ```bash
 python step5_experiments/scripts/evaluate_full_tfidf_fast.py \
@@ -191,11 +277,7 @@ python step5_experiments/scripts/evaluate_full_tfidf_fast.py \
   --predictions step5_experiments/results/qwen_full_tfidf_fast_predictions.csv
 ```
 
-The full prediction CSV is not included in this repository, but aggregate metrics are included.
-
-### 5. Reliability Gate and Cache-Only Strengthening
-
-Analyze bucket gates:
+### 5. Run Reliability Gate and RC-ETR
 
 ```bash
 python step5_experiments/scripts/analyze_reliability_gates.py \
@@ -203,35 +285,12 @@ python step5_experiments/scripts/analyze_reliability_gates.py \
   --qwen-jsonl step5_experiments/results/qwen_full_test_outputs.jsonl \
   --out step5_experiments/results/reliability_gate_metrics.csv \
   --report docs/reports/reliability_gate_analysis.md
-```
 
-Run cache-only robustness experiments:
-
-```bash
 python step5_experiments/server_scripts/cache_only_strengthening.py
-```
-
-This script covers repeated random splits, bootstrap significance, metadata ablation, predicted metadata, shuffle controls, min-count sensitivity, and calibrated gate summaries.
-
-### 6. RC-ETR: Reliability-Calibrated Evidence-Tree Routing
-
-Run the upgraded routing framework:
-
-```bash
 python step5_experiments/server_scripts/reliability_calibrated_tree_v2.py
 ```
 
-This produces:
-
-- `rcetr_v2_main.csv`
-- `rcetr_v2_random_raw.csv`
-- `rcetr_v2_random_summary.csv`
-
-The released aggregate main table reports the held-out evaluation split and ablations for direct template, uniform evidence reranking, bucket gate, no-tree routing, no-bucket routing, and RC-ETR.
-
-### 7. Strong Qwen Prompt Baselines
-
-Run prompt-only baselines:
+### 6. Run Strong Qwen Prompt Baselines
 
 ```bash
 python step5_experiments/server_scripts/run_qwen_strong_baselines.py \
@@ -239,38 +298,22 @@ python step5_experiments/server_scripts/run_qwen_strong_baselines.py \
   --out step5_experiments/results/qwen_strong_baselines.jsonl \
   --modes constrained,class,evidence \
   --resume
-```
 
-Evaluate them:
-
-```bash
 python step5_experiments/server_scripts/evaluate_qwen_strong_baselines.py
 ```
 
-The full JSONL is not included, but aggregate metrics by method and complexity are included.
-
-### 8. SLAKE External Stress Test
-
-Inspect SLAKE:
+### 7. Run SLAKE External Stress Test
 
 ```bash
 python step5_experiments/server_scripts/slake_external_validation.py inspect \
   --data-dir data/slake
-```
 
-Run Qwen on SLAKE:
-
-```bash
 python step5_experiments/server_scripts/slake_external_validation.py qwen \
   --data-dir data/slake \
   --split test \
   --lang en \
   --out outputs/slake/results/slake_qwen_test_en.jsonl
-```
 
-Evaluate routing on SLAKE:
-
-```bash
 python step5_experiments/server_scripts/slake_external_validation.py eval \
   --data-dir data/slake \
   --out-dir outputs/slake/results \
@@ -278,93 +321,71 @@ python step5_experiments/server_scripts/slake_external_validation.py eval \
   --qwen-jsonl outputs/slake/results/slake_qwen_test_en.jsonl
 ```
 
-SLAKE is used as an external stress test of the routing principle, not as a full endoscopic RC-ETR validation.
+## Component Guide
 
-## Label and Field Usage
+### Local Scripts
 
-### `complexity`
+| Script | Role |
+|---|---|
+| `run_kvasir_vqa_lite_experiments.py` | Runs majority/template/lexical retrieval baselines |
+| `build_server_sanity_bundle.py` | Builds a small image-question bundle for smoke tests |
+| `build_full_server_bundle.py` | Builds the full Kvasir test bundle |
+| `evaluate_full_tfidf_fast.py` | Evaluates class-aware TF-IDF retrieval and evidence reranking |
+| `analyze_reliability_gates.py` | Builds and evaluates development-prefix route policies |
+| `tune_qwen_rerank_weights.py` | Tunes evidence reranking weights on cached outputs |
 
-The Kvasir-VQA-x1 complexity label is used as a routing and analysis signal. The scripts treat it as a discrete metadata value and use it to form development buckets and complexity-level ablations.
+### Server Scripts
 
-### `question_class`
+| Script | Role |
+|---|---|
+| `qwen_image_smoke.py` | Minimal MLLM image inference smoke test |
+| `run_qwen_sanity.py` | Generates direct answers and structured evidence |
+| `cache_only_strengthening.py` | Runs robustness and control experiments from cached predictions |
+| `reliability_calibrated_tree_v2.py` | Runs the RC-ETR method and ablations |
+| `run_qwen_strong_baselines.py` | Runs stronger prompt-only Qwen baselines |
+| `evaluate_qwen_strong_baselines.py` | Evaluates prompt baselines |
+| `slake_external_validation.py` | Runs SLAKE inspection, Qwen inference, and routing evaluation |
 
-`question_class` is expected to be a list or list-like string. The first class is used as the primary class in bucket policies. Class labels also restrict the answer-template bank:
+## Notes on Metrics
 
-```text
-A(C) = answer templates whose training question class matches C
-```
+The code reports token-level F1, exact match, evidence route rate, and a text-only lexical drift diagnostic. Some legacy scripts still use the variable name `hallucination_proxy`; in the paper narrative this was renamed to **lexical drift proxy** to avoid overclaiming clinical hallucination.
 
-If no class-specific answer templates are available, the retrieval code falls back to global high-frequency templates.
+Exact numbers can vary with model checkpoint revisions, image availability, preprocessing, and library versions. The aggregate CSVs in this repository are included as reference outputs from the real runs.
 
-### Structured Evidence Fields
+## What Is Included and Excluded
 
-The structured evidence branch expects a compact JSON object with fields such as:
+Included:
 
-- `lesion_presence`
-- `lesion_type`
-- `lesion_count`
-- `location`
-- `instrument_presence`
-- `text_overlay_presence`
-- `abnormality_presence`
-- `uncertainty`
-- `evidence_sentence`
+- experiment code;
+- aggregate CSV results;
+- selected aggregate reports;
+- paper figures;
+- example input/output schemas.
 
-The evidence-tree compatibility code maps these fields into interpretable compatibility signals for candidate answers.
+Excluded:
 
-### Route Labels
+- raw medical images and dataset parquet files;
+- model checkpoints;
+- private SSH keys, passwords, and machine-specific paths;
+- full per-sample prediction dumps;
+- full Qwen JSONL outputs;
+- synthetic what-if manuscript variants and synthetic result tables.
 
-Route labels are not manual labels. They are derived on a development prefix: if evidence-aware retrieval beats direct-template retrieval under token F1 for a development bucket, that bucket is considered evidence-positive. The RC-ETR router then learns sample-level route reliability features and applies a calibrated threshold.
-
-### Lexical Drift
-
-Some legacy scripts and reports use the field name `hallucination_proxy`. In the paper narrative this was renamed to **lexical drift proxy** to avoid overclaiming clinical hallucination. The old column name is retained in some code paths for backward compatibility.
-
-## Released Aggregate Results
-
-The folder `step5_experiments/results/` contains aggregate CSVs only. Important files include:
-
-- `qwen_full_tfidf_fast_metrics.csv`
-- `reliability_gate_metrics.csv`
-- `rcetr_v2_main.csv`
-- `rcetr_v2_random_summary.csv`
-- `cache_only_random_split_summary.csv`
-- `cache_only_bootstrap.csv`
-- `cache_only_metadata_ablation.csv`
-- `cache_only_shuffle_summary.csv`
-- `cache_only_calibrated_gate_summary.csv`
-- `qwen_strong_baseline_metrics.csv`
-- `slake_external_summary_en.csv`
-
-These files are safe to publish as aggregate summaries. They are not a replacement for regenerating the full per-sample predictions when reproducing the paper.
-
-## Figures
-
-The `paper_figures/` folder contains the manuscript figures:
-
-![Pipeline](paper_figures/Figure2.png)
-
-![Routing mechanism](paper_figures/Figure3.png)
-
-Additional result figures are included for convenience:
-
-- `main_results.png`
-- `tradeoff_scatter.png`
-- `complexity_effect.png`
-- `complexity_routing_lines.png`
-
-## Reproducibility Notes
-
-- The main Kvasir evaluation uses a 529-example development prefix and a held-out evaluation split.
-- Full per-sample caches are not released. Re-run Qwen inference to regenerate them.
-- The method does not fine-tune Qwen or train a new visual encoder.
-- The route estimator is lightweight and operates on cached direct-answer, retrieval, metadata, and evidence-tree compatibility features.
-- Exact numbers can vary slightly with model checkpoint revisions, preprocessing, image availability, and library versions.
+See `docs/open_source_scope.md` for the exact release boundary.
 
 ## Responsible Use
 
-This code is intended for research reproduction and analysis of medical VQA routing behavior. It is not a clinical decision support system. Structured evidence parseability does not imply clinically verified factual correctness.
+This repository is intended for research reproduction and analysis of medical VQA routing behavior. It is not a clinical decision support system. Structured evidence parseability does not imply clinically verified factual correctness.
 
 ## Citation
 
 If you use this repository, please cite the corresponding MedHEval-Tree-V paper when available.
+
+```bibtex
+@misc{medhevaltreev2026,
+  title  = {MedHEval-Tree-V: Reliability-Calibrated Evidence-Tree Routing for Medical Visual Question Answering},
+  author = {MedHEval-Tree-V Contributors},
+  year   = {2026},
+  note   = {Research code release}
+}
+```
