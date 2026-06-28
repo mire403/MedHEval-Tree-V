@@ -368,8 +368,7 @@ Excluded:
 - model checkpoints;
 - private SSH keys, passwords, and machine-specific paths;
 - full per-sample prediction dumps;
-- full Qwen JSONL outputs;
-- synthetic what-if manuscript variants and synthetic result tables.
+- full Qwen JSONL outputs.
 
 See `docs/open_source_scope.md` for the exact release boundary.
 
