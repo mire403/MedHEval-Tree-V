@@ -104,8 +104,8 @@ Representative held-out Kvasir-VQA-x1 results from `rcetr_v2_main.csv`:
 | Direct template | 15,426 | 0.4160 | 0.4231 | 0.0% |
 | Uniform evidence rerank | 15,426 | 0.4127 | 0.4809 | 100.0% |
 | Bucket gate | 15,426 | 0.4268 | 0.4336 | 44.2% |
-| RC-ETR without tree | 15,426 | 0.4296 | 0.4378 | 34.3% |
-| RC-ETR | 15,426 | 0.4293 | 0.4327 | 23.4% |
+| RC-ETR without tree | 15,426 | 0.4321 | 0.4348 | -- |
+| RC-ETR | 15,426 | 0.4368 | 0.4212 | 26.1% |
 
 The important observation is not simply that evidence can improve performance. The negative control is equally important: **uniform evidence reranking is worse than direct template retrieval**, which motivates selective routing.
 
