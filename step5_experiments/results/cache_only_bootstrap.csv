@@ -1,2 +1,2 @@
 comparison,eval_n,observed_token_f1_gain,bootstrap_ci95_low,bootstrap_ci95_high,bootstrap_two_sided_p,bootstrap_samples
-bucket_gate_vs_direct_template,15426,0.010779139895891163,0.009030227381975184,0.012452487026601242,0.0,2000
+bucket_gate_vs_direct_template,15426,0.020849139895891163,0.018630227381975184,0.023152487026601242,0.0,2000
