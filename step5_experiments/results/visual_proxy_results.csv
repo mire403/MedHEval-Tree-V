@@ -1,0 +1,5 @@
+class,status,train_n,test_n,majority_acc,visual_proxy_acc,train_label_dist,test_label_dist
+text_presence,ok,1033,83,0.8433734939759037,0.5903614457831325,"{""yes"": 821, ""no"": 212}","{""yes"": 70, ""no"": 13}"
+box_artifact_presence,ok,909,72,1.0,1.0,"{""yes"": 909}","{""yes"": 72}"
+polyp_count,ok,1163,94,0.9893617021276596,0.46808510638297873,"{""one"": 1148, ""none"": 15}","{""one"": 93, ""none"": 1}"
+instrument_count,ok,873,50,0.88,0.68,"{""none"": 760, ""one"": 113}","{""none"": 44, ""one"": 6}"

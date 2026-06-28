@@ -1,0 +1,64 @@
+[
+  {
+    "class": "text_presence",
+    "status": "ok",
+    "train_n": 1033,
+    "test_n": 83,
+    "train_label_dist": {
+      "yes": 821,
+      "no": 212
+    },
+    "test_label_dist": {
+      "yes": 70,
+      "no": 13
+    },
+    "majority_acc": 0.8433734939759037,
+    "visual_proxy_acc": 0.5903614457831325
+  },
+  {
+    "class": "box_artifact_presence",
+    "status": "ok",
+    "train_n": 909,
+    "test_n": 72,
+    "train_label_dist": {
+      "yes": 909
+    },
+    "test_label_dist": {
+      "yes": 72
+    },
+    "majority_acc": 1.0,
+    "visual_proxy_acc": 1.0
+  },
+  {
+    "class": "polyp_count",
+    "status": "ok",
+    "train_n": 1163,
+    "test_n": 94,
+    "train_label_dist": {
+      "one": 1148,
+      "none": 15
+    },
+    "test_label_dist": {
+      "one": 93,
+      "none": 1
+    },
+    "majority_acc": 0.9893617021276596,
+    "visual_proxy_acc": 0.46808510638297873
+  },
+  {
+    "class": "instrument_count",
+    "status": "ok",
+    "train_n": 873,
+    "test_n": 50,
+    "train_label_dist": {
+      "none": 760,
+      "one": 113
+    },
+    "test_label_dist": {
+      "none": 44,
+      "one": 6
+    },
+    "majority_acc": 0.88,
+    "visual_proxy_acc": 0.68
+  }
+]
