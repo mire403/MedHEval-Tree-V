@@ -1,0 +1,3 @@
+id,answer,tfidf_direct_template,tfidf_evidence_rerank,question,complexity,question_class
+test-000000,polyp,polyp,polyp,What abnormality is present?,1,abnormality_presence
+test-000001,1,one,1,How many lesions are visible?,2,lesion_count
