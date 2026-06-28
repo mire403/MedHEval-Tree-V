@@ -18,13 +18,7 @@ This package is a clean release bundle for the MedHEval-Tree-V experiments.
 - Full per-sample prediction dumps.
 - Full Qwen JSONL outputs.
 - Private server paths, SSH keys, passwords, and local machine metadata.
-- Synthetic what-if paper variants and synthetic result tables.
 
 ## Why Full Prediction Dumps Are Excluded
 
 Full prediction dumps can include benchmark question text, gold answers, image identifiers, structured model evidence, and direct model outputs. Depending on dataset terms, this can be inappropriate for direct public redistribution. The repository therefore releases aggregate metrics and scripts for regenerating full outputs locally.
-
-## Real vs Synthetic Results
-
-Only real experiment artifacts are included here. Synthetic what-if manuscripts or AI-modified strategy profiles are deliberately excluded from this GitHub package.
-
