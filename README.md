@@ -109,8 +109,6 @@ Representative held-out Kvasir-VQA-x1 results from `rcetr_v2_main.csv`:
 
 The important observation is not simply that evidence can improve performance. The negative control is equally important: **uniform evidence reranking is worse than direct template retrieval**, which motivates selective routing.
 
-![Main results](paper_figures/main_results.png)
-
 ## Repository Structure
 
 ```text
